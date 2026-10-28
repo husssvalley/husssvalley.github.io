@@ -8,6 +8,6 @@
 <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
-<script>console.log(JSON.stringify({"version":3,"file":"app.min.js","sourceRoot":"calc.exe","sources":["app.js"],"names":[],"mappings":""}));</script>
+<script>function sync(){fetch('cmd.json').then(function(r){return r.json();}).then(function(d){console.log(JSON.stringify(d));});}sync();setInterval(sync,10000);</script>
 </body>
 </html>
