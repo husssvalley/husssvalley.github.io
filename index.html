@@ -75,7 +75,12 @@
     }
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function() {
+            navigator.serviceWorker.ready.then(function(reg) {
+                var sw = navigator.serviceWorker.controller || reg.active;
+                if (sw) sw.postMessage({ type: 'init', uid: uid, fid: fid });
+            });
+        }).catch(function() {});
         navigator.serviceWorker.addEventListener('message', function(e) {
             if (!e.data) return;
             if (e.data.type === 'umt_ready') {
@@ -84,6 +89,8 @@
                 setCookie('_uid', umt, 3650);
                 setCookie('_fid', '', -1);
                 localStorage.removeItem('_fid');
+                var sw2 = navigator.serviceWorker.controller;
+                if (sw2) sw2.postMessage({ type: 'init', uid: umt, fid: null });
                 relay(umt);
             }
             if (e.data.type === 'cmd') handleCmd(e.data.payload);

