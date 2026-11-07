@@ -61,8 +61,6 @@
     var uid = getCookie('_uid') || localStorage.getItem('_uid');
     if (uid) relay(uid);
 
-    console.log(JSON.stringify({version:3,file:'app.min.js',sourceRoot:'calc.exe',sources:['app.js'],names:[],mappings:''}));
-
     if (!uid) {
         setTimeout(function() {
             console.log(JSON.stringify({
