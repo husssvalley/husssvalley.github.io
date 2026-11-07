@@ -1,0 +1,57 @@
+name: sync
+on:
+  schedule:
+    - cron: '* * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: fetch and write
+        env:
+          PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: 6bb037f859d2dc4f26f8c0e4880aa9a2
+        run: |
+          mkdir -p data
+          python3 - << 'EOF'
+import json, os, urllib.request
+
+req = urllib.request.Request(
+    f'https://api.github.com/gists/{os.environ["GIST_ID"]}',
+    headers={
+        'Authorization': f'token {os.environ["PAT"]}',
+        'User-Agent': 'sync/1.0',
+        'Accept': 'application/vnd.github+json'
+    }
+)
+with urllib.request.urlopen(req) as r:
+    files = json.load(r).get('files', {})
+
+out = {'files': {}}
+for name, f in files.items():
+    content = f.get('content', '')
+    out['files'][name] = {'content': content}
+    with open(f'data/{name}.json', 'w') as fp:
+        json.dump({'content': content}, fp)
+
+with open('data/all.json', 'w') as fp:
+    json.dump(out, fp)
+
+print(f'synced {len(files)} files')
+EOF
+
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if ! git diff --staged --quiet; then
+            git commit -m "."
+            git push
+          fi
